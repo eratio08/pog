@@ -559,6 +559,52 @@ pub fn expected_maps_test() {
   disconnect(db)
 }
 
+pub fn interval_test() {
+  start_default()
+  |> assert_roundtrip(
+    pog.Interval(months: 0, days: 0, seconds: 0, nanoseconds: 0),
+    "interval",
+    pog.interval,
+    pog.interval_decoder(),
+  )
+  |> assert_roundtrip(
+    pog.Interval(months: 0, days: 7, seconds: 0, nanoseconds: 0),
+    "interval",
+    pog.interval,
+    pog.interval_decoder(),
+  )
+  |> assert_roundtrip(
+    pog.Interval(months: 7, days: 0, seconds: 0, nanoseconds: 0),
+    "interval",
+    pog.interval,
+    pog.interval_decoder(),
+  )
+  |> assert_roundtrip(
+    pog.Interval(months: 84, days: 0, seconds: 0, nanoseconds: 0),
+    "interval",
+    pog.interval,
+    pog.interval_decoder(),
+  )
+  |> assert_roundtrip(
+    pog.Interval(months: 77, days: 4, seconds: 10_921, nanoseconds: 0),
+    "interval",
+    pog.interval,
+    pog.interval_decoder(),
+  )
+  |> disconnect
+}
+
+pub fn interval_with_microseconds_test() {
+  start_default()
+  |> assert_roundtrip(
+    pog.Interval(months: 0, days: 0, seconds: 1, nanoseconds: 500_000_000),
+    "interval",
+    pog.interval,
+    pog.interval_decoder(),
+  )
+  |> disconnect
+}
+
 pub fn transaction_commit_test() {
   let db = start_default()
   let id_decoder = decode.at([0], decode.int)

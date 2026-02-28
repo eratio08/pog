@@ -409,6 +409,23 @@ pub fn calendar_time_of_day(time: TimeOfDay) -> Value {
   coerce_value(#(time.hours, time.minutes, seconds))
 }
 
+pub fn interval(interval: Interval) -> Value {
+  encode_interval(
+    interval.months,
+    interval.days,
+    interval.seconds,
+    interval.nanoseconds,
+  )
+}
+
+@external(erlang, "pog_ffi", "encode_interval")
+fn encode_interval(
+  months: Int,
+  days: Int,
+  seconds: Int,
+  nanoseconds: Int,
+) -> Value
+
 @external(erlang, "pog_ffi", "coerce")
 fn coerce_value(a: anything) -> Value
 
@@ -911,3 +928,25 @@ fn seconds_decoder() -> decode.Decoder(#(Int, Int)) {
 pub fn numeric_decoder() -> decode.Decoder(Float) {
   decode.one_of(decode.float, [decode.int |> decode.map(int.to_float)])
 }
+
+/// A PostgreSQL interval, representing a span of time with separate month,
+/// day, and sub-day components.
+///
+/// PostgreSQL stores intervals as three independent fields because month and
+/// day lengths vary (months are 28-31 days, days can be 23 or 25 hours due
+/// to DST). This type preserves that decomposition faithfully.
+///
+pub type Interval {
+  Interval(months: Int, days: Int, seconds: Int, nanoseconds: Int)
+}
+
+pub fn interval_decoder() -> decode.Decoder(Interval) {
+  use dynamic <- decode.then(decode.dynamic)
+  case decode_interval(dynamic) {
+    Ok(interval) -> decode.success(interval)
+    Error(_) -> decode.failure(Interval(0, 0, 0, 0), "Interval")
+  }
+}
+
+@external(erlang, "pog_ffi", "decode_interval")
+fn decode_interval(value: Dynamic) -> Result(Interval, Nil)

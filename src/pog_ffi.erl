@@ -1,6 +1,6 @@
 -module(pog_ffi).
 
--export([query/4, query_extended/2, start/1, coerce/1, null/0, checkout/1]).
+-export([query/4, query_extended/2, start/1, coerce/1, null/0, checkout/1, encode_interval/4, decode_interval/1]).
 
 -include_lib("pog/include/pog_Config.hrl").
 -include_lib("pg_types/include/pg_types.hrl").
@@ -141,3 +141,27 @@ convert_error(#{
     {unexpected_argument_type, Expected, Got};
 convert_error(closed) ->
     query_timeout.
+
+encode_interval(Months, Days, Seconds, Nanoseconds) ->
+    Hours = Seconds div 3600,
+    Remaining = Seconds rem 3600,
+    Minutes = Remaining div 60,
+    Secs = Remaining rem 60,
+    Microseconds = Nanoseconds div 1000,
+    FinalS = case Microseconds of
+        0 -> Secs;
+        _ -> Secs + Microseconds / 1000000
+    end,
+    {interval, {{Hours, Minutes, FinalS}, Days, Months}}.
+
+decode_interval({interval, {{H, M, S}, Days, Months}}) when is_integer(S) ->
+    TotalSeconds = H * 3600 + M * 60 + S,
+    {ok, {interval, Months, Days, TotalSeconds, 0}};
+decode_interval({interval, {{H, M, S}, Days, Months}}) when is_float(S) ->
+    Floored = trunc(S),
+    Microseconds = round((S - Floored) * 1000000),
+    TotalSeconds = H * 3600 + M * 60 + Floored,
+    Nanoseconds = Microseconds * 1000,
+    {ok, {interval, Months, Days, TotalSeconds, Nanoseconds}};
+decode_interval(_) ->
+    {error, nil}.
